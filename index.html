@@ -721,15 +721,26 @@ function getCachedTile(kind, fillColor, strokeColor, s) {
     octx.drawImage(img, cx - s, cy - s, s * 2, s * 2);
     octx.restore();
     hexPath(cx, cy, s, octx); // re-trace so the border draws crisp on top of the image
-    // A tile with real art shouldn't get the type's placeholder colour as a
-    // border on top of it (that's how a bright orange outline ended up
-    // stamped over burningForest/lavaPits' actual artwork) — just a
-    // faint neutral seam so adjacent hexes still read as separate tiles.
-    octx.strokeStyle = 'rgba(0,0,0,0.25)'; octx.lineWidth = 0.8; octx.stroke();
   } else {
     octx.fillStyle = fillColor; octx.fill();
-    octx.strokeStyle = strokeColor; octx.lineWidth = 0.8; octx.stroke();
   }
+  // Impassable terrain (TERRAIN[key].block) gets a thicker, distinctly red
+  // border regardless of fill/art, so "you can't place a Hub/Outpost/City
+  // here" reads at a glance — same red as the palette's 🚫 lock badge. A
+  // tile with real art otherwise gets a thin neutral seam (drawing the
+  // type's own colour on top of actual artwork is how a bright orange
+  // outline ended up stamped over burningForest/lavaPits). An unpainted
+  // zone tile (no art to clash with) keeps its own zone-tinted border,
+  // just thinner than before.
+  const blocked = !!(TERRAIN[kind] && TERRAIN[kind].block);
+  if (blocked) {
+    octx.strokeStyle = 'rgba(255,60,60,0.85)'; octx.lineWidth = 1.6;
+  } else if (img) {
+    octx.strokeStyle = 'rgba(0,0,0,0.22)'; octx.lineWidth = 0.5;
+  } else {
+    octx.strokeStyle = strokeColor; octx.lineWidth = 0.5;
+  }
+  octx.stroke();
 
   const tile = { canvas: off, size };
   tileCache[key] = tile;

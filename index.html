@@ -200,10 +200,8 @@ canvas{display:block}
     <span class="leg"><span class="ls" style="background:#4a7aff;opacity:0.6"></span>Hub territory (default colour)</span>
     <span class="leg"><span class="ls" style="background:#ffa040;opacity:0.6"></span>Outpost territory (default colour)</span>
     <span class="leg"><span class="ls" style="background:#d4a017;border:1px solid #ffe08a"></span>City (default colour)</span>
-    <span class="leg"><span class="ls" style="background:#a458c9;opacity:0.6"></span>Epic Dominion</span>
-    <span class="leg"><span class="ls" style="background:#4a7fc2;opacity:0.6"></span>Common Dominion</span>
-    <span class="leg"><span class="ls" style="background:#c9973c;opacity:0.6"></span>Frontier Dominion</span>
-    <span class="leg"><span class="ls" style="background:#e8791f;opacity:0.6"></span>Legendary (Throne / Watchtowers)</span>
+    <span class="leg"><span class="ls" style="background:#8e44ad;opacity:0.6"></span>Dominion no-build zone (default colour)</span>
+    <span class="leg">Dominion tile border shows rarity: <span style="color:#e8791f">Legendary</span> · <span style="color:#a458c9">Epic</span> · <span style="color:#4a7fc2">Common</span> · <span style="color:#c9973c">Frontier</span></span>
     <span class="leg">Impassable terrain (🚫 in the Terrain palette) blocks Hub/Outpost/City placement</span>
     <span class="leg">Click a placed marker to rename/recolour it</span>
   </div>
@@ -331,10 +329,21 @@ const DOMINION_INFO = {
 // A Dominion's default colour: its tier colour if it's a known tiered
 // reward, otherwise the flat MARKER_DEFAULTS.dominion (The Throne,
 // Watchtowers). `d.color` from the rename dialog always wins over either.
+// Used for the Dominion's own tile border/label — NOT its territory tint,
+// which is deliberately uniform across every Dominion regardless of tier
+// (see DOMINION_ZONE_COLOR) so 34 no-build zones don't sprawl the map in
+// four different colours competing with guild territory colours.
 function dominionColor(d) {
   const info = DOMINION_INFO[d.label];
   return info ? DOMINION_TIERS[info.tier].color : MARKER_DEFAULTS.dominion;
 }
+
+// Flat colour for every Dominion's no-build zone (fill + outline), same
+// purple regardless of tier. Tier is still visible up close via the
+// coloured ring around the Dominion's own tile (dominionColor above) — this
+// just keeps the wide-area territory wash from adding a second, competing
+// set of colours across the map on top of that.
+const DOMINION_ZONE_COLOR = '#8e44ad';
 
 // Zone base colours (fill / border) — Core innermost, Sanctuary outermost
 const RING = {
@@ -845,14 +854,14 @@ function render() {
   ctx.globalAlpha = 0.28;
   S.hubs     .forEach(h => drawTerritory(h.col, h.row, HUB_R, h.color || MARKER_DEFAULTS.hub));
   S.outposts .forEach(o => drawTerritory(o.col, o.row, OUT_R, o.color || MARKER_DEFAULTS.outpost));
-  S.dominions.forEach(d => drawTerritory(d.col, d.row, DOM_R, d.color || dominionColor(d)));
+  S.dominions.forEach(d => drawTerritory(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
   ctx.globalAlpha = 1;
 
   // Dominion no-build zones also get a crisp perimeter outline, not just
   // the translucent fill above — matches the coloured border already
   // drawn around a Dominion's own tile, and reads far more clearly than
   // the fill's soft edge on its own.
-  S.dominions.forEach(d => drawTerritoryOutline(d.col, d.row, DOM_R, d.color || dominionColor(d)));
+  S.dominions.forEach(d => drawTerritoryOutline(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
 
   // Hub, outpost and city icons (only when zoomed in enough)
   if (s > 5) {

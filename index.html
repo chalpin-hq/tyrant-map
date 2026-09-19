@@ -851,39 +851,44 @@ function getCachedTile(kind, fillColor, strokeColor, s) {
     for (const k in tileCache) delete tileCache[k]; // bound memory during long zoom gestures
   }
 
-  const size = Math.ceil(s * 2) + 4;
+  // Each tile is its own small bitmap, later blitted onto the main canvas at
+  // whatever fractional pixel position the current zoom/pan works out to.
+  // Its own hex edge is antialiased against a transparent background, and a
+  // neighbouring tile's bitmap lands at a slightly different sub-pixel
+  // offset — so their antialiased edges don't quite line up, leaving a
+  // hairline gap of the dark canvas background showing through between
+  // them. Drawing each tile's hex path a hair larger than its logical
+  // radius (s) makes neighbours overlap slightly instead of exactly
+  // abutting, so there's no gap left to show through.
+  const drawS = s + 1.4;
+  const size = Math.ceil(drawS * 2) + 4;
   const off  = document.createElement('canvas');
   off.width = off.height = size;
   const octx = off.getContext('2d');
   const cx = size / 2, cy = size / 2;
 
   const img = IMGS[kind];
-  hexPath(cx, cy, s, octx);
+  hexPath(cx, cy, drawS, octx);
   if (img) {
     octx.save(); octx.clip();
-    octx.drawImage(img, cx - s, cy - s, s * 2, s * 2);
+    octx.drawImage(img, cx - drawS, cy - drawS, drawS * 2, drawS * 2);
     octx.restore();
-    hexPath(cx, cy, s, octx); // re-trace so the border draws crisp on top of the image
+    // A deliberate, constant, low-opacity seam on top of the art — a subtle
+    // "connected but delineated" texture closer to the actual game, drawn
+    // at the true (non-overdrawn) radius so it sits right on the logical
+    // hex boundary rather than out in the overlap fudge above.
+    hexPath(cx, cy, s, octx);
+    octx.strokeStyle = 'rgba(0,0,0,0.16)'; octx.lineWidth = 0.6;
+    octx.stroke();
   } else {
     octx.fillStyle = fillColor; octx.fill();
-  }
-  // Impassable terrain (TERRAIN[key].block) gets a thicker, distinctly red
-  // border regardless of fill/art, so "you can't place a Hub/Outpost/City
-  // here" reads at a glance — same red as the palette's 🚫 lock badge. A
-  // tile with real art otherwise gets a thin neutral seam (drawing the
-  // type's own colour on top of actual artwork is how a bright orange
-  // outline ended up stamped over burningForest/lavaPits). An unpainted
-  // zone tile (no art to clash with) keeps its own zone-tinted border,
-  // just thinner than before.
-  const blocked = !!(TERRAIN[kind] && TERRAIN[kind].block);
-  if (blocked) {
-    octx.strokeStyle = 'rgba(255,60,60,0.75)'; octx.lineWidth = 1.1;
-  } else if (img) {
-    octx.strokeStyle = 'rgba(0,0,0,0.22)'; octx.lineWidth = 0.5;
-  } else {
+    // Unpainted zone tiles have no art to blend into, so they keep their
+    // own thin zone-tinted border as a reference grid, drawn at the true
+    // (non-overdrawn) radius so it doesn't inherit the overlap fudge above.
+    hexPath(cx, cy, s, octx);
     octx.strokeStyle = strokeColor; octx.lineWidth = 0.5;
+    octx.stroke();
   }
-  octx.stroke();
 
   const tile = { canvas: off, size };
   tileCache[key] = tile;
@@ -946,6 +951,56 @@ function drawTerritoryOutline(col, row, radius, strokeColor) {
   }
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round'; // see the same fix in drawImpassableBoundary for why
+  ctx.stroke();
+}
+
+// Traces just the true outer edge of impassable terrain — same technique as
+// drawTerritoryOutline (only stroke a hex edge when the neighbour across it
+// isn't also impassable) so a whole mountain range reads as one region with
+// a single clean boundary, the way the actual game draws it, instead of a
+// grid of red lines around every individual hex inside it.
+function drawImpassableBoundary(rMin, rMax) {
+  const s = hs();
+  ctx.beginPath();
+  for (let row = rMin; row <= rMax; row++) {
+    const off  = row % 2 === 0 ? 0 : hw() / 2;
+    const cMin = Math.max(0,      Math.floor((0            - canvas.width  / 2 - S.pan.x - off) / hw() + CX - 3));
+    const cMax = Math.min(GRID-1, Math.ceil((canvas.width  - canvas.width  / 2 - S.pan.x - off) / hw() + CX + 3));
+    const nbrs = HEX_NEIGHBORS[row % 2];
+
+    for (let col = cMin; col <= cMax; col++) {
+      const ttype = S.terrain[`${col},${row}`];
+      if (!ttype || !TERRAIN[ttype] || !TERRAIN[ttype].block) continue;
+      const { x, y } = h2p(col, row);
+      for (let i = 0; i < 6; i++) {
+        const [ddc, ddr] = nbrs[i];
+        const nc = col + ddc, nr = row + ddr;
+        let neighborBlocked = false;
+        if (nc >= 0 && nr >= 0 && nc < GRID && nr < GRID) {
+          const nttype = S.terrain[`${nc},${nr}`];
+          neighborBlocked = !!(nttype && TERRAIN[nttype] && TERRAIN[nttype].block);
+        }
+        if (!neighborBlocked) {
+          const a1 = Math.PI / 3 * i - Math.PI / 6, a2 = Math.PI / 3 * (i + 1) - Math.PI / 6;
+          ctx.moveTo(x + s * Math.cos(a1), y + s * Math.sin(a1));
+          ctx.lineTo(x + s * Math.cos(a2), y + s * Math.sin(a2));
+        }
+      }
+    }
+  }
+  ctx.strokeStyle = 'rgba(216,48,48,0.9)';
+  ctx.lineWidth = 2;
+  // Each boundary edge above is its own disconnected moveTo/lineTo segment
+  // rather than one continuous polyline, so adjacent edges never get a
+  // proper join where they meet at a corner — with the default butt cap
+  // that leaves a visible notch at every corner, worse the sharper the turn
+  // (natural terrain boundaries zigzag a lot more than a smooth circle) and
+  // worse the more zoomed in you are. Round caps/joins patch every one of
+  // those shared endpoints with a small rounded cap, closing the gap.
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.stroke();
 }
 
@@ -962,7 +1017,12 @@ function render() {
   const rMin = Math.max(0,      Math.floor((0             - canvas.height / 2 - S.pan.y) / (hh() * 0.75) + CY - pad));
   const rMax = Math.min(GRID-1, Math.ceil((canvas.height  - canvas.height / 2 - S.pan.y) / (hh() * 0.75) + CY + pad));
 
-  // Draw base hexes (cached bitmaps — see getCachedTile)
+  // Draw base hexes (cached bitmaps — see getCachedTile). Smoothing off for
+  // just this blit: it's a pure translation at native resolution (no
+  // scaling), so the browser's default bilinear resampling only softens the
+  // fractional-pixel edges rather than improving anything — turning it off
+  // makes this snap crisply instead of blending.
+  ctx.imageSmoothingEnabled = false;
   for (let row = rMin; row <= rMax; row++) {
     const off  = row % 2 === 0 ? 0 : hw() / 2;
     const cMin = Math.max(0,      Math.floor((0             - canvas.width  / 2 - S.pan.x - off) / hw() + CX - pad));
@@ -982,6 +1042,9 @@ function render() {
       ctx.drawImage(tile.canvas, x - tile.size / 2, y - tile.size / 2);
     }
   }
+
+  ctx.imageSmoothingEnabled = true;
+  drawImpassableBoundary(rMin, rMax);
 
   // Territory overlays — tinted per-marker so a colour-coded "war map" shows
   // overlapping claims clearly (see MARKER_DEFAULTS / the rename dialog)

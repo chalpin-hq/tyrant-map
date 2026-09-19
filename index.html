@@ -721,10 +721,15 @@ function getCachedTile(kind, fillColor, strokeColor, s) {
     octx.drawImage(img, cx - s, cy - s, s * 2, s * 2);
     octx.restore();
     hexPath(cx, cy, s, octx); // re-trace so the border draws crisp on top of the image
+    // A tile with real art shouldn't get the type's placeholder colour as a
+    // border on top of it (that's how a bright orange outline ended up
+    // stamped over burningForest/lavaPits' actual artwork) — just a
+    // faint neutral seam so adjacent hexes still read as separate tiles.
+    octx.strokeStyle = 'rgba(0,0,0,0.25)'; octx.lineWidth = 0.8; octx.stroke();
   } else {
     octx.fillStyle = fillColor; octx.fill();
+    octx.strokeStyle = strokeColor; octx.lineWidth = 0.8; octx.stroke();
   }
-  octx.strokeStyle = strokeColor; octx.lineWidth = 0.8; octx.stroke();
 
   const tile = { canvas: off, size };
   tileCache[key] = tile;

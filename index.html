@@ -9,27 +9,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* Chrome palette — near-black base, crimson reserved as the one standout
+  /* Chrome palette — neutral graphite base, gold reserved as the one standout
      accent (active state, headings, links) rather than spread across every
-     border and background. Zone/terrain/marker colours (RING, TERRAIN,
-     MARKER_DEFAULTS in the script below) are a separate, deliberate
-     palette tied to the game map itself and aren't part of this. */
-  --bg:        #0a0808;
-  --panel:     #121010;
-  --panel-hi:  #181414;
-  --border:    #2c2222;
-  --border-lo: #1c1616;
-  --accent:      #b8322f;
-  --accent-hi:   #ff5a4a;
-  --accent-bg:   #341210;
-  --hover-bg:    #1e1818;
-  --text:      #c4bcb8;
-  --text-dim:  #766e6a;
-  --text-bright: #f0ece8;
-  --input-bg:  #060505;
-  --danger-bg: #200c08;
-  --danger-text: #ff9068;
-  --danger-border: #4a241a;
+     border and background. Red is kept only for destructive actions
+     (Clear/Delete) via the separate --danger-* set below. Zone/terrain/marker
+     colours (RING, TERRAIN, MARKER_DEFAULTS in the script below) are a
+     separate, deliberate palette tied to the game map itself and aren't
+     part of this. */
+  --bg:        #0b0c0d;
+  --panel:     #131517;
+  --panel-hi:  #191c1f;
+  --border:    #2b2e32;
+  --border-lo: #1c1e21;
+  --accent:      #c9a227;
+  --accent-hi:   #f0c455;
+  --accent-bg:   #382c10;
+  --hover-bg:    #1f2225;
+  --text:      #c6cacd;
+  --text-dim:  #75797d;
+  --text-bright: #f1f2f3;
+  --input-bg:  #08090a;
+  --danger-bg: #24100e;
+  --danger-text: #ff8f72;
+  --danger-border: #532420;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
@@ -38,9 +40,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-sy
 /* ── Toolbar ── */
 #toolbar{
   display:flex;flex-wrap:wrap;gap:5px;padding:7px 8px;
-  background:linear-gradient(#131010,#0c0a0a);
+  background:linear-gradient(#151719,#0e0f11);
   border-bottom:1px solid var(--border);
-  box-shadow:0 1px 0 rgba(184,50,47,0.10);
+  box-shadow:0 1px 0 rgba(201,162,39,0.10);
   align-items:center;
   flex-shrink:0;
 }
@@ -64,11 +66,73 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-sy
 .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-dim)}
 .ls{width:11px;height:11px;border-radius:2px;flex-shrink:0}
 
-/* ── Canvas ── */
+/* ── Canvas + guild panel row ── */
+#main-row{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
 #cw{flex:1;overflow:hidden;position:relative;touch-action:none;cursor:crosshair}
 #cw.panning{cursor:grab}
 #cw.panning-active{cursor:grabbing}
 canvas{display:block}
+
+/* ── Guild panel ── */
+#guild-panel{
+  width:250px;flex-shrink:0;overflow-y:auto;
+  background:var(--panel);border-left:1px solid var(--border);
+  padding:10px;
+}
+#btn-toggle-guilds{display:none;}
+#guild-panel-backdrop{display:none;}
+
+/* Below this width the fixed 250px sidebar would crowd out most of the
+   map, so it becomes an off-canvas drawer toggled from the toolbar
+   instead — the map keeps the full width. */
+@media (max-width: 820px){
+  #btn-toggle-guilds{display:inline-block;}
+  #guild-panel{
+    position:absolute;top:0;right:0;bottom:0;width:min(250px, 80vw);
+    z-index:20;transform:translateX(100%);transition:transform 0.2s ease;
+    box-shadow:-6px 0 16px rgba(0,0,0,0.5);
+  }
+  #guild-panel.open{transform:translateX(0);}
+  #guild-panel-backdrop{
+    display:block;position:absolute;inset:0;background:rgba(0,0,0,0.4);
+    z-index:19;opacity:0;pointer-events:none;transition:opacity 0.2s ease;
+  }
+  #guild-panel-backdrop.show{opacity:1;pointer-events:auto;}
+}
+.gp-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.gp-title{
+  font-family:'Cinzel',serif;font-weight:700;letter-spacing:0.03em;
+  font-size:13px;color:var(--accent-hi);
+}
+.guild-row{
+  background:var(--panel-hi);border:1px solid var(--border);border-radius:5px;
+  padding:8px;margin-bottom:8px;
+}
+.guild-row-header{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.guild-swatch{
+  width:16px;height:16px;border-radius:3px;flex-shrink:0;
+  border:1px solid rgba(255,255,255,0.25);padding:0;background:none;cursor:pointer;
+}
+.guild-swatch::-webkit-color-swatch-wrapper{padding:0;}
+.guild-swatch::-webkit-color-swatch{border:none;border-radius:2px;}
+.guild-name{
+  flex:1;font-size:12px;color:var(--text-bright);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.guild-name:hover{color:var(--accent-hi);}
+.guild-remove{
+  background:none;border:none;color:var(--text-dim);cursor:pointer;
+  font-size:12px;padding:0 2px;flex-shrink:0;
+}
+.guild-remove:hover{color:var(--danger-text);}
+.guild-actions{display:flex;flex-direction:column;gap:4px;}
+.guild-actions .tool-btn{width:100%;text-align:center;font-size:10px;}
+.guild-actions .tool-btn.armed{background:var(--accent-bg);color:var(--accent-hi);border-color:var(--accent);}
+.guild-actions .tool-btn:disabled{opacity:0.4;cursor:default;}
+#guild-empty{font-size:11px;color:var(--text-dim);line-height:1.5;}
 
 /* ── Tooltip ── */
 #tip{
@@ -86,7 +150,7 @@ canvas{display:block}
 
 /* ── Label dialog (replaces window.prompt, which some embedded browsers block) ── */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(8,6,3,0.65);
+  position:fixed;inset:0;background:rgba(5,5,6,0.65);
   display:none;align-items:center;justify-content:center;z-index:50;
 }
 .modal-box{
@@ -102,6 +166,7 @@ canvas{display:block}
   border:1px solid var(--border);background:var(--input-bg);color:var(--text-bright);
 }
 .modal-color-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text);}
+.modal-color-row.hide{display:none;}
 .modal-color-row input[type=color]{
   width:36px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px;
   background:var(--input-bg);cursor:pointer;
@@ -166,10 +231,10 @@ canvas{display:block}
     <button class="tool-btn" onclick="showGuide()">❓ Guide</button>
     <span class="tb-sep"></span>
     <button class="tool-btn active" id="btn-pan"     onclick="setTool('pan')">🖐 Pan</button>
-    <button class="tool-btn"        id="btn-hub"     onclick="setTool('hub')">⬡ Hub</button>
-    <button class="tool-btn"        id="btn-outpost" onclick="setTool('outpost')">◈ Outpost</button>
-    <button class="tool-btn"        id="btn-city"    onclick="setTool('city')">🏙 City</button>
-    <button class="tool-btn"        id="btn-erase"   onclick="setTool('erase')">✕ Erase</button>
+    <button class="tool-btn"        id="btn-hub"     title="Hub"     onclick="setTool('hub')">⬡</button>
+    <button class="tool-btn"        id="btn-outpost" title="Outpost" onclick="setTool('outpost')">◈</button>
+    <button class="tool-btn"        id="btn-city"    title="City"    onclick="setTool('city')">🏙</button>
+    <button class="tool-btn"        id="btn-erase"   title="Erase"   onclick="setTool('erase')">🗑</button>
     <span class="tb-sep"></span>
     <!-- Design-only: placing a *new* Dominion. Existing ones can still be
          dragged/renamed by anyone regardless of mode (e.g. to reposition a
@@ -185,6 +250,8 @@ canvas{display:block}
     <span class="tb-sep" id="sep-terrain"></span>
     <button class="tool-btn danger" onclick="clearAll()">✕ Clear</button>
     <span class="tb-sep"></span>
+    <button class="tool-btn" id="btn-toggle-guilds" onclick="toggleGuildPanel()">🛡 Guilds</button>
+    <span class="tb-sep"></span>
     <button class="tool-btn"        onclick="exportJSON()">↓ Export</button>
     <button class="tool-btn"        onclick="importJSON()">↑ Import</button>
     <span class="tb-sep" id="sep-save"></span>
@@ -194,21 +261,25 @@ canvas{display:block}
   </div>
 
   <div id="legend">
-    <span class="leg"><span class="ls" style="background:#1e3a5f;border:1px solid #3a6090"></span>Sanctuary</span>
-    <span class="leg"><span class="ls" style="background:#1a3a1a;border:1px solid #3a703a"></span>Midlands</span>
-    <span class="leg"><span class="ls" style="background:#57554f;border:1px solid #7c786f"></span>Core</span>
-    <span class="leg"><span class="ls" style="background:#4a7aff;opacity:0.6"></span>Hub territory (default colour)</span>
-    <span class="leg"><span class="ls" style="background:#ffa040;opacity:0.6"></span>Outpost territory (default colour)</span>
-    <span class="leg"><span class="ls" style="background:#d4a017;border:1px solid #ffe08a"></span>City (default colour)</span>
-    <span class="leg"><span class="ls" style="background:#8e44ad;opacity:0.6"></span>Dominion no-build zone (default colour)</span>
-    <span class="leg">Dominion tile border shows rarity: <span style="color:#e8791f">Legendary</span> · <span style="color:#a458c9">Epic</span> · <span style="color:#4a7fc2">Common</span> · <span style="color:#c9973c">Frontier</span></span>
-    <span class="leg">Impassable terrain (🚫 in the Terrain palette) blocks Hub/Outpost/City placement</span>
-    <span class="leg">Click a placed marker to rename/recolour it</span>
+    <span class="leg"><span class="ls" style="background:#8e44ad;opacity:0.6"></span>Dominion zone</span>
+    <span class="leg">Rarity border: <span style="color:#e8791f">Legendary</span> · <span style="color:#a458c9">Epic</span> · <span style="color:#4a7fc2">Common</span> · <span style="color:#c9973c">Frontier</span></span>
+    <span class="leg">Red border = impassable</span>
   </div>
 
-  <div id="cw">
-    <canvas id="c"></canvas>
-    <div id="tip"></div>
+  <div id="main-row">
+    <div id="cw">
+      <canvas id="c"></canvas>
+      <div id="tip"></div>
+    </div>
+    <div id="guild-panel-backdrop" onclick="toggleGuildPanel(false)"></div>
+    <div id="guild-panel">
+      <div class="gp-header">
+        <span class="gp-title">Guilds</span>
+        <button id="btn-add-guild" class="tool-btn">+ Add Guild</button>
+      </div>
+      <div id="guild-empty">No guilds yet — add one to start spawning Hubs and Outposts grouped by guild, with a shared colour and a 10-Outpost cap per guild.</div>
+      <div id="guild-list"><!-- populated by renderGuildPanel() --></div>
+    </div>
   </div>
 
   <div id="info"></div>
@@ -217,7 +288,7 @@ canvas{display:block}
     <div class="modal-box">
       <div id="label-modal-title" class="modal-title">Label</div>
       <input id="label-modal-input" type="text" maxlength="40" autocomplete="off" />
-      <div class="modal-color-row">
+      <div id="label-modal-color-row" class="modal-color-row">
         <label for="label-modal-color">Colour</label>
         <input id="label-modal-color" type="color" />
       </div>
@@ -228,6 +299,7 @@ canvas{display:block}
       </div>
       <div id="label-modal-icon-hint" class="modal-icon-hint"></div>
       <div class="modal-actions">
+        <button id="label-modal-delete" class="tool-btn danger" type="button" style="margin-right:auto;display:none">Delete</button>
         <button id="label-modal-cancel" class="tool-btn">Cancel</button>
         <button id="label-modal-ok" class="tool-btn active">Save</button>
       </div>
@@ -240,10 +312,11 @@ canvas{display:block}
       <div class="guide-body">
         <p><strong>Nothing here saves automatically.</strong> Everything you place lives only in this browser tab until you export it.</p>
         <ul>
-          <li><strong>↓ Export</strong> downloads a file with everything currently on the map (terrain, Dominions, and your Hub/Outpost/City). Keep that file so you don't lose your layout, or send it to a guildmate to share what you've got.</li>
+          <li><strong>↓ Export</strong> downloads a file with everything currently on the map (terrain, Dominions, Guilds, and your Hub/Outpost/City). Keep that file so you don't lose your layout, or send it to a guildmate to share what you've got.</li>
           <li><strong>↑ Import</strong> loads a file someone exported (including your own earlier export), replacing what's currently shown.</li>
-          <li>Click a marker <strong>without dragging it</strong> to rename or recolour it. Different colours per guild/alliance make an easy "war map".</li>
-          <li>Click-drag a marker to move it. Pick <strong>✕ Erase</strong>, then click a marker to remove it. The three Watchtowers in Core can be dragged too, so you can reposition them after the Throne changes hands.</li>
+          <li>Use the <strong>Guilds</strong> panel to add a guild, then spawn its Hub and up to 10 Outposts — they automatically share that guild's colour, and you can't drop one inside another guild's territory. The Hub/Outpost/City buttons in the toolbar are still there for one-off, ungrouped markers.</li>
+          <li>Click a marker <strong>without dragging it</strong> to rename, recolour, or delete it (guild-linked markers recolour the whole guild).</li>
+          <li>Click-drag a marker to move it. Pick <strong>Erase</strong> (🗑), then click a marker to remove it. The three Watchtowers in Core can be dragged too, so you can reposition them after the Throne changes hands.</li>
           <li>Pan by dragging empty space; zoom with the scroll wheel or a pinch.</li>
         </ul>
       </div>
@@ -414,15 +487,62 @@ const DESIGN_MODE = new URLSearchParams(location.search).has('design');
 // ── State ──────────────────────────────────────
 let S = {
   terrain:  {},   // { "col,row": "deadlands"|"forest"|... }
-  hubs:     [],   // [{ col, row, label }]
-  outposts: [],   // [{ col, row, label }]
+  hubs:     [],   // [{ col, row, label, guildId? }]
+  outposts: [],   // [{ col, row, label, guildId? }]
   cities:   [],   // [{ col, row, label }]
   dominions: [],  // [{ col, row, label }] — contested points; see DOM_R above
+  guilds:   [],   // [{ id, name, color }] — see GUILD_PALETTE below
   tool:     'pan',
   ttype:    'deadlands',
   pan:      { x: 0, y: 0 },
   zoom:     2.5,
 };
+
+// A Hub/Outpost with no guildId is "ungrouped" — it keeps working exactly
+// as it always has (own colour via the rename dialog, no territory
+// restrictions beyond terrain/zone/Dominion rules). The guild system is
+// entirely opt-in on top of that: nothing here changes how an ungrouped
+// marker behaves.
+const GUILD_PALETTE = [
+  { name: 'Red',       color: '#dc2626' },
+  { name: 'Cyan',      color: '#22d3ee' },
+  { name: 'Teal',      color: '#14b8a6' },
+  { name: 'Pink',      color: '#ec4899' },
+  { name: 'Mint',      color: '#5eead4' },
+  { name: 'Lime',      color: '#84cc16' },
+  { name: 'Tan',       color: '#b8823c' },
+  { name: 'Umber',     color: '#78350f' },
+  { name: 'Slate',     color: '#64748b' },
+  { name: 'Dark Cyan', color: '#0891b2' },
+];
+const MAX_GUILDS = GUILD_PALETTE.length;
+const MAX_OUTPOSTS_PER_GUILD = 10;
+
+function guildById(id) {
+  return S.guilds.find(g => g.id === id) || null;
+}
+// Assigns whichever palette colour isn't currently in use by another
+// guild, rather than just going by guild count — so removing a guild
+// frees its colour back up for the next one instead of leaving a gap.
+function nextGuildColor() {
+  const used = new Set(S.guilds.map(g => g.color));
+  const free = GUILD_PALETTE.find(p => !used.has(p.color));
+  return free ? free.color : GUILD_PALETTE[S.guilds.length % GUILD_PALETTE.length].color;
+}
+function nextGuildId() {
+  return 1 + S.guilds.reduce((max, g) => Math.max(max, g.id), 0);
+}
+// A Hub/Outpost's colour: its own explicit override (`m.color`, set via the
+// rename dialog) always wins, same as every other marker type; otherwise
+// its guild's colour if it belongs to one; otherwise the flat type default.
+function markerColor(m, type) {
+  if (m.color) return m.color;
+  if (m.guildId) {
+    const g = guildById(m.guildId);
+    if (g) return g.color;
+  }
+  return MARKER_DEFAULTS[type];
+}
 
 // Loads map-data/default.json (the repo's committed baseline map) at boot, in
 // any mode. This is what "Save Default Map" (design mode) writes — replace
@@ -444,6 +564,7 @@ async function loadDefaultMap() {
     if (d.outposts)  S.outposts  = d.outposts;
     if (d.cities)    S.cities    = d.cities;
     if (d.dominions) S.dominions = d.dominions;
+    if (d.guilds)    S.guilds    = d.guilds;
   } catch (e) {
     console.warn('Could not load map-data/default.json (needs a local server or GitHub Pages — see README):', e);
   }
@@ -528,6 +649,7 @@ const labelModal           = document.getElementById('label-modal');
 const labelModalTitle      = document.getElementById('label-modal-title');
 const labelModalInput      = document.getElementById('label-modal-input');
 const labelModalColor      = document.getElementById('label-modal-color');
+const labelModalColorRow   = document.getElementById('label-modal-color-row');
 const labelModalIconRow    = document.getElementById('label-modal-icon-row');
 const labelModalIconInput  = document.getElementById('label-modal-icon-input');
 const labelModalIconPreview = document.getElementById('label-modal-icon-preview');
@@ -535,6 +657,7 @@ const labelModalIconClear  = document.getElementById('label-modal-icon-clear');
 const labelModalIconHint   = document.getElementById('label-modal-icon-hint');
 const labelModalOk         = document.getElementById('label-modal-ok');
 const labelModalCancel     = document.getElementById('label-modal-cancel');
+const labelModalDelete     = document.getElementById('label-modal-delete');
 let labelModalResolve  = null;
 let labelModalImg      = null; // staged icon override as a data-URL, or null for none
 let labelModalFallback = null; // read-only preview src to show when there's no override (a convention file already doing the job)
@@ -547,17 +670,25 @@ let labelModalIconKey  = null; // explicit filename-key override (d.icon), if th
 // override, opts.previewFallback shows what's currently rendering (e.g. a
 // assets/dominions/<slug>.png convention file) when there's no override yet,
 // opts.iconKey carries a marker's explicit `icon` field, if set.
+// opts.showColor (default true) hides the colour row entirely — used for
+// the "Add Guild" name prompt, where colour comes from the guild palette,
+// not a free picker.
+// opts.showDelete reveals a Delete button (only meaningful when editing an
+// already-placed marker) — clicking it resolves the promise with the
+// sentinel { delete: true } instead of a label/colour result.
 function askMarkerInfo(title, defaultLabel, defaultColor, opts = {}) {
   return new Promise(resolve => {
     labelModalResolve = resolve;
     labelModalTitle.textContent = title;
     labelModalInput.value = defaultLabel;
-    labelModalColor.value = defaultColor;
+    labelModalColor.value = defaultColor || '#888888';
+    labelModalColorRow.classList.toggle('hide', opts.showColor === false);
     labelModalImg = opts.img || null;
     labelModalFallback = opts.previewFallback || null;
     labelModalIconKey = opts.iconKey || null;
     labelModalIconRow.classList.toggle('show', !!opts.showIcon);
     labelModalIconInput.value = '';
+    labelModalDelete.style.display = opts.showDelete ? 'inline-block' : 'none';
     updateIconPreview();
     updateIconHint();
     labelModal.style.display = 'flex';
@@ -630,6 +761,9 @@ labelModalIconClear.addEventListener('click', () => {
 });
 labelModalOk.addEventListener('click', () => closeLabelModal(currentMarkerInfo()));
 labelModalCancel.addEventListener('click', () => closeLabelModal(null));
+labelModalDelete.addEventListener('click', () => {
+  if (confirm(`Delete "${labelModalInput.value}"?`)) closeLabelModal({ delete: true });
+});
 labelModalInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') closeLabelModal(currentMarkerInfo());
   if (e.key === 'Escape') closeLabelModal(null);
@@ -852,8 +986,8 @@ function render() {
   // Territory overlays — tinted per-marker so a colour-coded "war map" shows
   // overlapping claims clearly (see MARKER_DEFAULTS / the rename dialog)
   ctx.globalAlpha = 0.28;
-  S.hubs     .forEach(h => drawTerritory(h.col, h.row, HUB_R, h.color || MARKER_DEFAULTS.hub));
-  S.outposts .forEach(o => drawTerritory(o.col, o.row, OUT_R, o.color || MARKER_DEFAULTS.outpost));
+  S.hubs     .forEach(h => drawTerritory(h.col, h.row, HUB_R, markerColor(h, 'hub')));
+  S.outposts .forEach(o => drawTerritory(o.col, o.row, OUT_R, markerColor(o, 'outpost')));
   S.dominions.forEach(d => drawTerritory(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
   ctx.globalAlpha = 1;
 
@@ -868,7 +1002,7 @@ function render() {
     S.hubs.forEach(h => {
       const { x, y } = h2p(h.col, h.row);
       const r = Math.min(s * 0.55, 14);
-      const color = h.color || MARKER_DEFAULTS.hub;
+      const color = markerColor(h, 'hub');
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -887,7 +1021,7 @@ function render() {
     S.outposts.forEach(o => {
       const { x, y } = h2p(o.col, o.row);
       const ss = Math.min(s * 0.45, 12);
-      const color = o.color || MARKER_DEFAULTS.outpost;
+      const color = markerColor(o, 'outpost');
       ctx.beginPath();
       ctx.moveTo(x, y - ss); ctx.lineTo(x + ss, y + ss * 0.7); ctx.lineTo(x - ss, y + ss * 0.7);
       ctx.closePath();
@@ -985,12 +1119,19 @@ function render() {
 }
 
 // ── Tool & interaction ─────────────────────────
-function setTool(t) {
+function setTool(t, keepGuildArm) {
   S.tool = t;
   ['pan', 'hub', 'outpost', 'city', 'dominion', 'terrain', 'erase'].forEach(id => {
     document.getElementById('btn-' + id)?.classList.toggle('active', id === t);
   });
   document.getElementById('terrain-palette').style.display = (t === 'terrain' && DESIGN_MODE) ? 'block' : 'none';
+  // Switching tools away from an armed guild spawn (e.g. pressing Esc, or
+  // picking a different tool by hand) cancels it, same as you'd expect —
+  // armGuildSpawn() is the only caller that passes keepGuildArm=true.
+  if (!keepGuildArm && activeGuildSpawn) {
+    activeGuildSpawn = null;
+    renderGuildPanel();
+  }
 }
 
 // Terrain a Hub/Outpost/City may not be placed or dragged onto (see TERRAIN[type].block)
@@ -1012,6 +1153,37 @@ function hubZoneBlocked(col, row) {
 function dominionBlockLabel(col, row) {
   const hit = S.dominions.find(d => hdist(col, row, d.col, d.row) <= DOM_R);
   return hit ? hit.label : null;
+}
+
+// A Hub/Outpost's own tile can't sit inside ANOTHER guild's existing
+// territory — first-placed keeps the ground, but the zones themselves are
+// still allowed to overlap afterward (unchanged territory rendering); this
+// only restricts where a NEW marker's own hex can go. Only fires when
+// placing/dragging for a specific guild (placingGuildId set) — an
+// ungrouped Hub/Outpost never triggers or is blocked by this at all.
+function guildTerritoryBlockLabel(col, row, placingGuildId, excludeMarker) {
+  if (!placingGuildId) return null;
+  for (const h of S.hubs) {
+    if (h === excludeMarker) continue;
+    if (h.guildId && h.guildId !== placingGuildId && hdist(col, row, h.col, h.row) <= HUB_R) {
+      return guildById(h.guildId)?.name || 'another guild';
+    }
+  }
+  for (const o of S.outposts) {
+    if (o === excludeMarker) continue;
+    if (o.guildId && o.guildId !== placingGuildId && hdist(col, row, o.col, o.row) <= OUT_R) {
+      return guildById(o.guildId)?.name || 'another guild';
+    }
+  }
+  return null;
+}
+
+// Same cross-guild territory rule as placement, applied when dragging an
+// existing guild-tagged Hub/Outpost — excludes the marker's own current
+// position from the check (a marker is obviously inside its own territory).
+function dragBlockedByGuild(hit, col, row) {
+  const m = hit.list[hit.idx];
+  return !!(m.guildId && guildTerritoryBlockLabel(col, row, m.guildId, m));
 }
 
 function canPlace(col, row, type) {
@@ -1049,15 +1221,36 @@ function markerAt(col, row) {
 async function renameMarker(hit) {
   const m = hit.list[hit.idx];
   const isDominion = hit.type === 'dominion';
-  const result = await askMarkerInfo(`Edit marker at (${m.col},${m.row})`, m.label, m.color || MARKER_DEFAULTS[hit.type], {
+  const defaultColor = isDominion ? (m.color || dominionColor(m)) : markerColor(m, hit.type);
+  const result = await askMarkerInfo(`Edit marker at (${m.col},${m.row})`, m.label, defaultColor, {
     showIcon: isDominion,
     img: m.img || null,
     previewFallback: isDominion ? resolvedDomIconSrc(m) : null,
     iconKey: isDominion ? (m.icon || null) : null,
+    showDelete: true,
   });
   if (result === null) { render(); return; }
+  if (result.delete) {
+    hit.list.splice(hit.idx, 1);
+    infoEl.textContent = `Deleted "${m.label}".`;
+    renderGuildPanel();
+    render();
+    return;
+  }
   m.label = result.label;
-  m.color = result.color;
+  if (result.color !== defaultColor) {
+    if (m.guildId) {
+      // A guild-linked Hub/Outpost shares one colour across the whole
+      // guild — editing it here recolours the guild (and every other
+      // marker in it) instead of freezing just this marker to a one-off
+      // override, which would silently desync it from future guild
+      // recolours done from the guild panel.
+      const guild = guildById(m.guildId);
+      if (guild) { guild.color = result.color; renderGuildPanel(); }
+    } else {
+      m.color = result.color;
+    }
+  }
   if (isDominion) {
     if (result.img) m.img = result.img; else delete m.img;
   }
@@ -1086,7 +1279,7 @@ async function handleClick(col, row) {
   if (col < 0 || row < 0 || col >= GRID || row >= GRID) return;
 
   if (S.tool === 'pan') {
-    infoEl.textContent = `(${col},${row}) — ${RING.label[ring(col, row)]}. Select Hub / Outpost / City / Erase to edit.`;
+    infoEl.textContent = `(${col},${row}) — ${RING.label[ring(col, row)]}. Spawn a guild's Hub/Outpost from the Guilds panel, or pick Hub/Outpost/City/Erase above.`;
     return;
   }
 
@@ -1099,18 +1292,44 @@ async function handleClick(col, row) {
     if (blocker) { infoEl.textContent = `Can't place a Hub on ${blocker} at (${col},${row}).`; return; }
     if (hubZoneBlocked(col, row)) { infoEl.textContent = `Can't place a Hub in the Core zone at (${col},${row}) — Hub territory can still reach into Core.`; return; }
     if (domBlocker) { infoEl.textContent = `Can't place a Hub within ${DOM_R} tiles of the "${domBlocker}" dominion at (${col},${row}).`; return; }
-    const info = await askMarkerInfo(`Hub at (${col},${row})`, 'Hub', MARKER_DEFAULTS.hub);
-    if (info === null) return;
-    S.hubs.push({ col, row, label: info.label, color: info.color });
-    infoEl.textContent = `Hub "${info.label}" placed at (${col},${row}) — ${rname}. Territory radius: ${HUB_R}.`;
+    const guildSpawn = activeGuildSpawn && activeGuildSpawn.type === 'hub' ? activeGuildSpawn : null;
+    const guildBlocker = guildSpawn ? guildTerritoryBlockLabel(col, row, guildSpawn.guildId) : null;
+    if (guildBlocker) { infoEl.textContent = `Can't place a Hub here — inside ${guildBlocker}'s territory at (${col},${row}).`; return; }
+    if (guildSpawn) {
+      const guild = guildById(guildSpawn.guildId);
+      S.hubs.push({ col, row, label: `${guild.name} Hub`, guildId: guild.id });
+      infoEl.textContent = `Hub placed for ${guild.name} at (${col},${row}) — ${rname}. Territory radius: ${HUB_R}.`;
+      activeGuildSpawn = null; setTool('pan'); renderGuildPanel();
+    } else {
+      const info = await askMarkerInfo(`Hub at (${col},${row})`, 'Hub', MARKER_DEFAULTS.hub);
+      if (info === null) return;
+      S.hubs.push({ col, row, label: info.label, color: info.color });
+      infoEl.textContent = `Hub "${info.label}" placed at (${col},${row}) — ${rname}. Territory radius: ${HUB_R}.`;
+    }
 
   } else if (S.tool === 'outpost') {
     if (blocker) { infoEl.textContent = `Can't place an Outpost on ${blocker} at (${col},${row}).`; return; }
     if (domBlocker) { infoEl.textContent = `Can't place an Outpost within ${DOM_R} tiles of the "${domBlocker}" dominion at (${col},${row}).`; return; }
-    const info = await askMarkerInfo(`Outpost at (${col},${row})`, 'Outpost', MARKER_DEFAULTS.outpost);
-    if (info === null) return;
-    S.outposts.push({ col, row, label: info.label, color: info.color });
-    infoEl.textContent = `Outpost "${info.label}" placed at (${col},${row}) — ${rname}. Territory radius: ${OUT_R}.`;
+    const guildSpawn = activeGuildSpawn && activeGuildSpawn.type === 'outpost' ? activeGuildSpawn : null;
+    const guildBlocker = guildSpawn ? guildTerritoryBlockLabel(col, row, guildSpawn.guildId) : null;
+    if (guildBlocker) { infoEl.textContent = `Can't place an Outpost here — inside ${guildBlocker}'s territory at (${col},${row}).`; return; }
+    if (guildSpawn) {
+      const guild = guildById(guildSpawn.guildId);
+      const n = S.outposts.filter(o => o.guildId === guild.id).length + 1;
+      if (n > MAX_OUTPOSTS_PER_GUILD) {
+        infoEl.textContent = `${guild.name} already has ${MAX_OUTPOSTS_PER_GUILD} Outposts.`;
+        activeGuildSpawn = null; setTool('pan'); renderGuildPanel();
+        return;
+      }
+      S.outposts.push({ col, row, label: `${guild.name} Outpost ${n}`, guildId: guild.id });
+      infoEl.textContent = `Outpost ${n} placed for ${guild.name} at (${col},${row}) — ${rname}. Territory radius: ${OUT_R}.`;
+      activeGuildSpawn = null; setTool('pan'); renderGuildPanel();
+    } else {
+      const info = await askMarkerInfo(`Outpost at (${col},${row})`, 'Outpost', MARKER_DEFAULTS.outpost);
+      if (info === null) return;
+      S.outposts.push({ col, row, label: info.label, color: info.color });
+      infoEl.textContent = `Outpost "${info.label}" placed at (${col},${row}) — ${rname}. Territory radius: ${OUT_R}.`;
+    }
 
   } else if (S.tool === 'city') {
     if (blocker) { infoEl.textContent = `Can't place a City on ${blocker} at (${col},${row}).`; return; }
@@ -1135,6 +1354,7 @@ async function handleClick(col, row) {
   } else if (S.tool === 'erase') {
     applyToolAt(col, row);
     infoEl.textContent = `Erased (${col},${row}).`;
+    renderGuildPanel();
   }
   render();
 }
@@ -1142,17 +1362,18 @@ async function handleClick(col, row) {
 // ── Export / import ────────────────────────────
 function clearAll() {
   if (DESIGN_MODE) {
-    if (!confirm('Clear everything, including terrain and Dominions?')) return;
-    S.terrain = {}; S.hubs = []; S.outposts = []; S.cities = []; S.dominions = [];
+    if (!confirm('Clear everything, including terrain, Dominions, and Guilds?')) return;
+    S.terrain = {}; S.hubs = []; S.outposts = []; S.cities = []; S.dominions = []; S.guilds = [];
   } else {
-    if (!confirm('Clear all placed Hubs, Outposts, and Cities? (Dominions are left as-is.)')) return;
-    S.hubs = []; S.outposts = []; S.cities = [];
+    if (!confirm('Clear all placed Hubs, Outposts, Cities, and Guilds? (Dominions are left as-is.)')) return;
+    S.hubs = []; S.outposts = []; S.cities = []; S.guilds = [];
   }
+  renderGuildPanel();
   render();
 }
 
 function exportJSON() {
-  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions }, null, 2);
+  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds }, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
   a.download = 'tyrant_map.json'; a.click();
@@ -1171,6 +1392,8 @@ function importJSON() {
         if (d.outposts)  S.outposts  = d.outposts;
         if (d.cities)    S.cities    = d.cities;
         if (d.dominions) S.dominions = d.dominions;
+        if (d.guilds)    S.guilds    = d.guilds;
+        renderGuildPanel();
         render();
         infoEl.textContent = 'Map imported successfully.';
       } catch (e) { alert('Invalid JSON file.'); }
@@ -1188,7 +1411,7 @@ function importJSON() {
 // keep editing.
 function saveDefaultMap() {
   if (!DESIGN_MODE) return;
-  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions }, null, 2);
+  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds }, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
   a.download = 'default.json';
@@ -1261,6 +1484,138 @@ function renderTerrainPalette(filter = '') {
     });
   });
 }
+
+// ── Guild panel ─────────────────────────────────
+// A Hub/Outpost placed while "armed" for a guild (see armGuildSpawn) gets
+// tagged with that guild's id and takes its colour by default — see
+// markerColor() above. Entirely opt-in: a marker with no guildId behaves
+// exactly as it always has.
+let activeGuildSpawn = null; // { guildId, type: 'hub'|'outpost' } while a spawn button is armed, else null
+
+async function addGuild() {
+  if (S.guilds.length >= MAX_GUILDS) {
+    infoEl.textContent = `Palette only has ${MAX_GUILDS} distinct guild colours — remove one before adding another.`;
+    return;
+  }
+  const result = await askMarkerInfo('Add Guild', `Guild ${S.guilds.length + 1}`, null, { showColor: false });
+  if (result === null) return;
+  const name = result.label.trim();
+  if (!name) return;
+  S.guilds.push({ id: nextGuildId(), name, color: nextGuildColor() });
+  renderGuildPanel();
+}
+
+async function renameGuild(guild) {
+  const result = await askMarkerInfo(`Rename guild`, guild.name, null, { showColor: false });
+  if (result === null) return;
+  const name = result.label.trim();
+  if (!name) return;
+  guild.name = name;
+  renderGuildPanel();
+  render(); // marker labels don't include the guild name, but territory/legend context might reference it later
+}
+
+function removeGuild(guild) {
+  if (!confirm(`Remove "${guild.name}"? Its Hub/Outposts stay on the map (keeping their current colour) but stop being grouped under this guild.`)) return;
+  // Unlink rather than delete — bake the guild's colour in first so nothing
+  // visually jumps to the flat default the instant the guild disappears.
+  [...S.hubs, ...S.outposts].forEach(m => {
+    if (m.guildId === guild.id) {
+      m.color = m.color || guild.color;
+      delete m.guildId;
+    }
+  });
+  S.guilds = S.guilds.filter(g => g.id !== guild.id);
+  if (activeGuildSpawn && activeGuildSpawn.guildId === guild.id) {
+    activeGuildSpawn = null;
+    setTool('pan');
+  }
+  renderGuildPanel();
+  render();
+}
+
+function armGuildSpawn(guildId, type) {
+  setTool(type, true);
+  activeGuildSpawn = { guildId, type };
+  renderGuildPanel();
+  toggleGuildPanel(false); // on mobile the drawer would otherwise cover the map you need to tap
+  const guild = guildById(guildId);
+  infoEl.textContent = `Click a hex to place ${type === 'hub' ? 'the Hub' : 'an Outpost'} for ${guild ? guild.name : 'this guild'}. Esc to cancel.`;
+}
+
+// Below the 820px breakpoint the guild panel is an off-canvas drawer (see
+// CSS); above it these classes are harmless no-ops since the panel is
+// always visible in the flex row.
+const guildPanelEl       = document.getElementById('guild-panel');
+const guildPanelBackdrop = document.getElementById('guild-panel-backdrop');
+function toggleGuildPanel(show) {
+  const open = show !== undefined ? show : !guildPanelEl.classList.contains('open');
+  guildPanelEl.classList.toggle('open', open);
+  guildPanelBackdrop.classList.toggle('show', open);
+}
+
+function renderGuildPanel() {
+  const list = document.getElementById('guild-list');
+  const empty = document.getElementById('guild-empty');
+  empty.style.display = S.guilds.length ? 'none' : 'block';
+  list.innerHTML = '';
+
+  S.guilds.forEach(guild => {
+    const hasHub = S.hubs.some(h => h.guildId === guild.id);
+    const outpostCount = S.outposts.filter(o => o.guildId === guild.id).length;
+
+    const row = document.createElement('div');
+    row.className = 'guild-row';
+
+    const header = document.createElement('div');
+    header.className = 'guild-row-header';
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.className = 'guild-swatch';
+    swatch.value = guild.color;
+    swatch.title = "Change this guild's colour";
+    swatch.oninput = () => { guild.color = swatch.value; render(); };
+    swatch.onchange = () => renderGuildPanel();
+    const name = document.createElement('span');
+    name.className = 'guild-name';
+    name.textContent = guild.name;
+    name.title = 'Click to rename';
+    name.onclick = () => renameGuild(guild);
+    const remove = document.createElement('button');
+    remove.className = 'guild-remove';
+    remove.textContent = '✕';
+    remove.title = 'Remove guild';
+    remove.onclick = () => removeGuild(guild);
+    header.append(swatch, name, remove);
+
+    const actions = document.createElement('div');
+    actions.className = 'guild-actions';
+
+    const hubBtn = document.createElement('button');
+    hubBtn.className = 'tool-btn';
+    const hubArmed = activeGuildSpawn && activeGuildSpawn.guildId === guild.id && activeGuildSpawn.type === 'hub';
+    hubBtn.classList.toggle('armed', hubArmed);
+    hubBtn.textContent = hasHub ? 'Hub placed' : (hubArmed ? 'Click map to place…' : 'Spawn Hub');
+    hubBtn.disabled = hasHub;
+    hubBtn.onclick = () => armGuildSpawn(guild.id, 'hub');
+
+    const outpostBtn = document.createElement('button');
+    outpostBtn.className = 'tool-btn';
+    const outpostArmed = activeGuildSpawn && activeGuildSpawn.guildId === guild.id && activeGuildSpawn.type === 'outpost';
+    outpostBtn.classList.toggle('armed', outpostArmed);
+    const atCap = outpostCount >= MAX_OUTPOSTS_PER_GUILD;
+    outpostBtn.textContent = outpostArmed ? 'Click map to place…' : `Spawn Outpost (${outpostCount}/${MAX_OUTPOSTS_PER_GUILD})`;
+    outpostBtn.disabled = !hasHub || atCap;
+    outpostBtn.title = !hasHub ? 'Place this guild\'s Hub first' : (atCap ? 'Outpost cap reached' : '');
+    outpostBtn.onclick = () => armGuildSpawn(guild.id, 'outpost');
+
+    actions.append(hubBtn, outpostBtn);
+    row.append(header, actions);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('btn-add-guild').addEventListener('click', addGuild);
 
 // ── Pan / zoom input ───────────────────────────
 let drag = false, moved = false;
@@ -1378,7 +1733,7 @@ window.addEventListener('mousemove', e => {
     // real mice/trackpads almost always report a few pixels of jitter during
     // a "stationary" click, which used to falsely mark every click as a drag
     // and skip straight past the rename/recolour dialog.
-    if (markerIsMovable(dragMarker) && col >= 0 && row >= 0 && col < GRID && row < GRID && canPlace(col, row, dragMarker.type) && (col !== m.col || row !== m.row)) {
+    if (markerIsMovable(dragMarker) && col >= 0 && row >= 0 && col < GRID && row < GRID && canPlace(col, row, dragMarker.type) && !dragBlockedByGuild(dragMarker, col, row) && (col !== m.col || row !== m.row)) {
       m.col = col;
       m.row = row;
       moved = true;
@@ -1408,6 +1763,7 @@ window.addEventListener('mouseup', e => {
     lastPaintKey = null;
     render();
     infoEl.textContent = S.tool === 'terrain' ? `Painted ${TERRAIN[S.ttype].label}.` : 'Erased along drag.';
+    if (S.tool === 'erase') renderGuildPanel();
     return;
   }
   if (dragMarker) {
@@ -1507,7 +1863,7 @@ cw.addEventListener('touchmove', e => {
   } else if (e.touches.length === 1 && dragMarker) {
     const rect = cw.getBoundingClientRect();
     const { col, row } = p2h(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
-    if (markerIsMovable(dragMarker) && col >= 0 && row >= 0 && col < GRID && row < GRID && canPlace(col, row, dragMarker.type)) {
+    if (markerIsMovable(dragMarker) && col >= 0 && row >= 0 && col < GRID && row < GRID && canPlace(col, row, dragMarker.type) && !dragBlockedByGuild(dragMarker, col, row)) {
       dragMarker.list[dragMarker.idx].col = col;
       dragMarker.list[dragMarker.idx].row = row;
       moved = true;
@@ -1527,6 +1883,7 @@ cw.addEventListener('touchend', e => {
     lastPaintKey = null;
     render();
     infoEl.textContent = S.tool === 'terrain' ? `Painted ${TERRAIN[S.ttype].label}.` : 'Erased along drag.';
+    if (S.tool === 'erase') renderGuildPanel();
   } else if (e.touches.length === 0 && dragMarker) {
     const hit = dragMarker;
     const m = hit.list[hit.idx];
@@ -1565,8 +1922,8 @@ if (!DESIGN_MODE) {
   document.getElementById('sep-save').style.display = 'none';
 }
 infoEl.textContent = DESIGN_MODE
-  ? '"Pan" is selected by default — safe to look around. Pick Terrain to paint, Dominion for a new contested point, or Hub/Outpost/City to place. Esc deselects back to Pan.'
-  : '"Pan" is selected by default — safe to look around. Pick Hub/Outpost/City to place, or drag an existing marker (including a Dominion) to move it. Esc deselects back to Pan.';
+  ? '"Pan" is selected by default — safe to look around. Pick Terrain to paint, Dominion for a new contested point, or Hub/Outpost/City to place — or spawn grouped ones from the Guilds panel. Esc deselects back to Pan.'
+  : '"Pan" is selected by default — safe to look around. Spawn a guild\'s Hub/Outpost from the Guilds panel, use Hub/Outpost/City above for one-off markers, or drag an existing marker (including a Dominion) to move it. Esc deselects back to Pan.';
 
 // Esc is a quick "deselect" back to Pan mode, unless the label dialog is
 // the thing currently capturing input (it has its own Escape-to-cancel).
@@ -1575,7 +1932,7 @@ window.addEventListener('keydown', e => {
 });
 
 preloadImages(() => {
-  loadDefaultMap().finally(() => { renderTerrainPalette(); render(); });
+  loadDefaultMap().finally(() => { renderTerrainPalette(); renderGuildPanel(); render(); });
 });
 
 try {

@@ -1060,6 +1060,59 @@ function render() {
   // the fill's soft edge on its own.
   S.dominions.forEach(d => drawTerritoryOutline(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
 
+  // Dominions render like a terrain tile — the icon (or fallback colour)
+  // fills the whole hex, not a small badge floating over the terrain
+  // underneath — since a Dominion visually replaces what's on that tile,
+  // the same way a terrain paint does. Each one can carry its own icon
+  // (see domIconSrc); falls back to a plain colour fill with a "D" until
+  // one is found. The colour itself defaults to the Dominion's reward
+  // tier (see DOMINION_TIERS/dominionColor) rather than one flat purple,
+  // so Epic/Common/Frontier are visually distinguishable at a glance —
+  // an icon still gets a coloured border instead of a plain white one,
+  // so the tier reads even once art is in place.
+  // Unlike Hub/Outpost/City below, this isn't gated behind `s > 5` —
+  // Dominions are sparse, fixed, and important enough to stay visible
+  // (icon and name both) even zoomed out past where those hide to cut
+  // clutter.
+  S.dominions.forEach(d => {
+    const { x, y } = h2p(d.col, d.row);
+    const color = d.color || dominionColor(d);
+    const img = getDomImg(domIconSrc(d));
+    hexPath(x, y, s);
+    if (img) {
+      ctx.save(); ctx.clip();
+      ctx.drawImage(img, x - s, y - s, s * 2, s * 2);
+      ctx.restore();
+      hexPath(x, y, s);
+      ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.stroke();
+    } else {
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(10, Math.min(s * 0.5, 16))}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('D', x, y);
+    }
+    if (d.label) {
+      // Capped much higher than the Hub/Outpost/City labels (10px) — a
+      // Dominion's name and buff text are the main thing you're reading at
+      // close zoom, so they should keep growing with it instead of topping
+      // out while the marker itself is still getting bigger.
+      const labelSize = Math.max(7, Math.min(s * 0.38, 24));
+      ctx.fillStyle = color;
+      ctx.font = `${labelSize}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(d.label, x, y + s + 2);
+
+      const info = DOMINION_INFO[d.label];
+      if (info && info.buff) {
+        ctx.font = `${Math.max(6, Math.min(s * 0.3, 16))}px sans-serif`;
+        ctx.fillStyle = 'rgba(224,216,210,0.85)';
+        ctx.fillText(info.buff, x, y + s + 2 + labelSize + 1);
+      }
+    }
+  });
+
   // Hub, outpost and city icons (only when zoomed in enough)
   if (s > 5) {
     S.hubs.forEach(h => {
@@ -1119,50 +1172,6 @@ function render() {
       }
     });
 
-    // Dominions render like a terrain tile — the icon (or fallback colour)
-    // fills the whole hex, not a small badge floating over the terrain
-    // underneath — since a Dominion visually replaces what's on that tile,
-    // the same way a terrain paint does. Each one can carry its own icon
-    // (see domIconSrc); falls back to a plain colour fill with a "D" until
-    // one is found. The colour itself defaults to the Dominion's reward
-    // tier (see DOMINION_TIERS/dominionColor) rather than one flat purple,
-    // so Epic/Common/Frontier are visually distinguishable at a glance —
-    // an icon still gets a coloured border instead of a plain white one,
-    // so the tier reads even once art is in place.
-    S.dominions.forEach(d => {
-      const { x, y } = h2p(d.col, d.row);
-      const color = d.color || dominionColor(d);
-      const img = getDomImg(domIconSrc(d));
-      hexPath(x, y, s);
-      if (img) {
-        ctx.save(); ctx.clip();
-        ctx.drawImage(img, x - s, y - s, s * 2, s * 2);
-        ctx.restore();
-        hexPath(x, y, s);
-        ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.stroke();
-      } else {
-        ctx.fillStyle = color; ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2; ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${Math.max(10, Math.min(s * 0.5, 16))}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('D', x, y);
-      }
-      if (d.label && s > 6) {
-        const labelSize = Math.max(7, Math.min(s * 0.38, 10));
-        ctx.fillStyle = color;
-        ctx.font = `${labelSize}px sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(d.label, x, y + s + 2);
-
-        const info = DOMINION_INFO[d.label];
-        if (info && info.buff && s > 8) {
-          ctx.font = `${Math.max(6, Math.min(s * 0.3, 8))}px sans-serif`;
-          ctx.fillStyle = 'rgba(224,216,210,0.85)';
-          ctx.fillText(info.buff, x, y + s + 2 + labelSize + 1);
-        }
-      }
-    });
   }
 
   // Zone labels at high zoom — positioned inside their own ring

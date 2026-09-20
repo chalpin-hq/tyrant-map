@@ -7046,21 +7046,48 @@
       "row": 125,
       "label": "Eastern Watchtower",
       "movable": true,
-      "icon": "watchtower"
+      "icon": "watchtower",
+      "rotationSet": "nwSwE"
     },
     {
       "col": 114,
       "row": 106,
       "label": "Northwestern Watchtower",
       "movable": true,
-      "icon": "watchtower"
+      "icon": "watchtower",
+      "rotationSet": "nwSwE"
     },
     {
       "col": 114,
       "row": 144,
       "label": "Southwestern Watchtower",
       "movable": true,
-      "icon": "watchtower"
+      "icon": "watchtower",
+      "rotationSet": "nwSwE"
+    },
+    {
+      "col": 103,
+      "row": 125,
+      "label": "Western Watchtower",
+      "movable": true,
+      "icon": "watchtower",
+      "rotationSet": "neSeW"
+    },
+    {
+      "col": 136,
+      "row": 106,
+      "label": "Northeastern Watchtower",
+      "movable": true,
+      "icon": "watchtower",
+      "rotationSet": "neSeW"
+    },
+    {
+      "col": 136,
+      "row": 144,
+      "label": "Southeastern Watchtower",
+      "movable": true,
+      "icon": "watchtower",
+      "rotationSet": "neSeW"
     },
     {
       "col": 47,
@@ -7144,5 +7171,6 @@
       "label": "Drill Yard"
     }
   ],
-  "guilds": []
+  "guilds": [],
+  "watchtowerSets": { "nwSwE": false, "neSeW": true }
 }

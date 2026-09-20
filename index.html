@@ -55,6 +55,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:-apple-sy
 }
 .tool-btn:hover{background:var(--hover-bg);border-color:#4a3a3a}
 .tool-btn.active{background:var(--accent-bg);color:var(--accent-hi);border-color:var(--accent)}
+.wt-group{display:flex;align-items:center;gap:7px;font-size:11px;white-space:nowrap;}
+.wt-label{color:var(--text-dim);}
+.wt-toggle{display:flex;align-items:center;gap:4px;color:var(--text);cursor:pointer;user-select:none;}
+.wt-toggle input{cursor:pointer;accent-color:var(--accent);}
 .tool-btn.danger{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-border)}
 
 /* ── Legend ── */
@@ -252,6 +256,16 @@ canvas{display:block}
     <span class="tb-sep"></span>
     <button class="tool-btn" id="btn-toggle-guilds" onclick="toggleGuildPanel()">🛡 Guilds</button>
     <span class="tb-sep"></span>
+    <!-- The Throne mirrors its three Watchtowers east-west when it changes
+         hands — both known layouts are kept as data (see the `rotationSet`
+         field on their Dominion entries) and toggled here instead of
+         someone dragging three markers into place from memory each time. -->
+    <span class="wt-group" title="Which layout of the three rotating Watchtowers is currently on the map">
+      <span class="wt-label">🗼 Watchtowers:</span>
+      <label class="wt-toggle"><input type="checkbox" id="wt-nwSwE"> NW·SW·E</label>
+      <label class="wt-toggle"><input type="checkbox" id="wt-neSeW"> NE·SE·W</label>
+    </span>
+    <span class="tb-sep"></span>
     <button class="tool-btn"        onclick="exportJSON()">↓ Export</button>
     <button class="tool-btn"        onclick="importJSON()">↑ Import</button>
     <span class="tb-sep" id="sep-save"></span>
@@ -316,7 +330,8 @@ canvas{display:block}
           <li><strong>↑ Import</strong> loads a file someone exported (including your own earlier export), replacing what's currently shown.</li>
           <li>Use the <strong>Guilds</strong> panel to add a guild, then spawn its Hub and up to 10 Outposts — they automatically share that guild's colour, and you can't drop one inside another guild's territory. The Hub/Outpost/City buttons in the toolbar are still there for one-off, ungrouped markers.</li>
           <li>Click a marker <strong>without dragging it</strong> to rename, recolour, or delete it (guild-linked markers recolour the whole guild).</li>
-          <li>Click-drag a marker to move it. Pick <strong>Erase</strong> (🗑), then click a marker to remove it. The three Watchtowers in Core can be dragged too, so you can reposition them after the Throne changes hands.</li>
+          <li>Click-drag a marker to move it. Pick <strong>Erase</strong> (🗑), then click a marker to remove it.</li>
+          <li>The Throne mirrors its three Watchtowers east-west when it changes hands — use the <strong>🗼 Watchtowers</strong> checkboxes to switch which known layout is shown instead of dragging them by hand. They can still be dragged (and are the only Dominions that can be, outside design mode) if a rotation shows up that isn't one of the two saved layouts.</li>
           <li>Pan by dragging empty space; zoom with the scroll wheel or a pinch.</li>
         </ul>
       </div>
@@ -368,6 +383,9 @@ const DOMINION_INFO = {
   'Eastern Watchtower':       { tier: 'legendary' },
   'Northwestern Watchtower':  { tier: 'legendary' },
   'Southwestern Watchtower':  { tier: 'legendary' },
+  'Western Watchtower':       { tier: 'legendary' },
+  'Northeastern Watchtower':  { tier: 'legendary' },
+  'Southeastern Watchtower':  { tier: 'legendary' },
 
   'Ancient Forge':      { tier: 'epic', buff: '+12% Training Speed' },
   'Crystal Mine':       { tier: 'epic', buff: '+12% Gathering Speed' },
@@ -492,6 +510,13 @@ let S = {
   cities:   [],   // [{ col, row, label }]
   dominions: [],  // [{ col, row, label }] — contested points; see DOM_R above
   guilds:   [],   // [{ id, name, color }] — see GUILD_PALETTE below
+  // Which set of the three rotating Watchtowers (see the `rotationSet` field
+  // on their Dominion entries in map-data/default.json) is currently shown
+  // on the map. The Throne apparently mirrors their positions east-west when
+  // it changes hands, so both known layouts are kept as data and toggled
+  // here rather than relying on someone dragging three markers by hand each
+  // time — see visibleDominions().
+  watchtowerSets: { nwSwE: false, neSeW: true },
   tool:     'pan',
   ttype:    'deadlands',
   pan:      { x: 0, y: 0 },
@@ -565,6 +590,8 @@ async function loadDefaultMap() {
     if (d.cities)    S.cities    = d.cities;
     if (d.dominions) S.dominions = d.dominions;
     if (d.guilds)    S.guilds    = d.guilds;
+    if (d.watchtowerSets) S.watchtowerSets = d.watchtowerSets;
+    syncWatchtowerCheckboxes();
   } catch (e) {
     console.warn('Could not load map-data/default.json (needs a local server or GitHub Pages — see README):', e);
   }
@@ -1051,14 +1078,14 @@ function render() {
   ctx.globalAlpha = 0.28;
   S.hubs     .forEach(h => drawTerritory(h.col, h.row, HUB_R, markerColor(h, 'hub')));
   S.outposts .forEach(o => drawTerritory(o.col, o.row, OUT_R, markerColor(o, 'outpost')));
-  S.dominions.forEach(d => drawTerritory(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
+  visibleDominions().forEach(d => drawTerritory(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
   ctx.globalAlpha = 1;
 
   // Dominion no-build zones also get a crisp perimeter outline, not just
   // the translucent fill above — matches the coloured border already
   // drawn around a Dominion's own tile, and reads far more clearly than
   // the fill's soft edge on its own.
-  S.dominions.forEach(d => drawTerritoryOutline(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
+  visibleDominions().forEach(d => drawTerritoryOutline(d.col, d.row, DOM_R, d.color || DOMINION_ZONE_COLOR));
 
   // Dominions render like a terrain tile — the icon (or fallback colour)
   // fills the whole hex, not a small badge floating over the terrain
@@ -1074,7 +1101,7 @@ function render() {
   // Dominions are sparse, fixed, and important enough to stay visible
   // (icon and name both) even zoomed out past where those hide to cut
   // clutter.
-  S.dominions.forEach(d => {
+  visibleDominions().forEach(d => {
     const { x, y } = h2p(d.col, d.row);
     const color = d.color || dominionColor(d);
     const img = getDomImg(domIconSrc(d));
@@ -1219,11 +1246,21 @@ function hubZoneBlocked(col, row) {
   return ring(col, row) === 0;
 }
 
+// Dominions belonging to a Watchtower rotation set that's currently toggled
+// off (see S.watchtowerSets) don't exist on the map right now — filtered out
+// here rather than at each call site, so rendering, placement-blocking, and
+// click/drag hit-testing all agree on what's actually "there" without each
+// one needing to know about rotation sets. A Dominion with no rotationSet
+// (everything except the three rotating Watchtowers) is always visible.
+function visibleDominions() {
+  return S.dominions.filter(d => !d.rotationSet || S.watchtowerSets[d.rotationSet]);
+}
+
 // Dominions are contested no-build zones — nothing can be teleported to or
 // placed within DOM_R of one, regardless of terrain or zone. Returns the
 // dominion's label (for messaging) or null.
 function dominionBlockLabel(col, row) {
-  const hit = S.dominions.find(d => hdist(col, row, d.col, d.row) <= DOM_R);
+  const hit = visibleDominions().find(d => hdist(col, row, d.col, d.row) <= DOM_R);
   return hit ? hit.label : null;
 }
 
@@ -1282,8 +1319,12 @@ function markerAt(col, row) {
   if (idx > -1) return { list: S.outposts, idx, type: 'outpost' };
   idx = S.cities.findIndex(m => m.col === col && m.row === row);
   if (idx > -1) return { list: S.cities, idx, type: 'city' };
-  idx = S.dominions.findIndex(m => m.col === col && m.row === row);
-  if (idx > -1) return { list: S.dominions, idx, type: 'dominion' };
+  // A Dominion belonging to a currently-hidden Watchtower rotation set isn't
+  // "there" to click/drag — matched against visibleDominions() first, then
+  // resolved back to its real index in S.dominions (not the filtered list's
+  // index) since that's the array callers actually splice/mutate.
+  const dom = visibleDominions().find(m => m.col === col && m.row === row);
+  if (dom) return { list: S.dominions, idx: S.dominions.indexOf(dom), type: 'dominion' };
   return null;
 }
 
@@ -1445,7 +1486,7 @@ function clearAll() {
 }
 
 function exportJSON() {
-  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds }, null, 2);
+  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds, watchtowerSets: S.watchtowerSets }, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
   a.download = 'tyrant_map.json'; a.click();
@@ -1465,6 +1506,8 @@ function importJSON() {
         if (d.cities)    S.cities    = d.cities;
         if (d.dominions) S.dominions = d.dominions;
         if (d.guilds)    S.guilds    = d.guilds;
+        if (d.watchtowerSets) S.watchtowerSets = d.watchtowerSets;
+        syncWatchtowerCheckboxes();
         renderGuildPanel();
         render();
         infoEl.textContent = 'Map imported successfully.';
@@ -1483,7 +1526,7 @@ function importJSON() {
 // keep editing.
 function saveDefaultMap() {
   if (!DESIGN_MODE) return;
-  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds }, null, 2);
+  const data = JSON.stringify({ terrain: S.terrain, hubs: S.hubs, outposts: S.outposts, cities: S.cities, dominions: S.dominions, guilds: S.guilds, watchtowerSets: S.watchtowerSets }, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
   a.download = 'default.json';
@@ -1688,6 +1731,19 @@ function renderGuildPanel() {
 }
 
 document.getElementById('btn-add-guild').addEventListener('click', addGuild);
+
+// ── Watchtower rotation toggle ──────────────────
+const wtCheckboxes = { nwSwE: document.getElementById('wt-nwSwE'), neSeW: document.getElementById('wt-neSeW') };
+function syncWatchtowerCheckboxes() {
+  for (const key in wtCheckboxes) wtCheckboxes[key].checked = !!S.watchtowerSets[key];
+}
+for (const key in wtCheckboxes) {
+  wtCheckboxes[key].addEventListener('change', () => {
+    S.watchtowerSets[key] = wtCheckboxes[key].checked;
+    render();
+  });
+}
+syncWatchtowerCheckboxes();
 
 // ── Pan / zoom input ───────────────────────────
 let drag = false, moved = false;

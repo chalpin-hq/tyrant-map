@@ -1853,8 +1853,15 @@ cw.addEventListener('mouseleave', () => tip.style.display = 'none');
 // Scroll wheel zoom (anchored to cursor)
 cw.addEventListener('wheel', e => {
   e.preventDefault();
-  const rect   = cw.getBoundingClientRect();
-  const mx     = e.clientX - rect.left, my = e.clientY - rect.top;
+  const rect = cw.getBoundingClientRect();
+  // h2p() places every hex relative to the canvas's own centre
+  // (canvas.width/2 + S.pan.x), not its top-left corner, so the cursor
+  // position has to be re-based the same way before it can be compared
+  // against S.pan — otherwise the anchor point is off by that half-canvas
+  // offset and zooming visibly drifts away from the cursor instead of
+  // tracking it.
+  const mx     = e.clientX - rect.left - canvas.width  / 2;
+  const my     = e.clientY - rect.top  - canvas.height / 2;
   const factor = e.deltaY > 0 ? 0.85 : 1.18;
   const oldZ   = S.zoom;
   S.zoom = Math.max(0.4, Math.min(40, S.zoom * factor));
@@ -1911,8 +1918,11 @@ cw.addEventListener('touchmove', e => {
     const scale = nd / pinch.dist;
     const nz    = Math.max(0.4, Math.min(40, pinch.zoom * scale));
     S.zoom  = nz;
-    S.pan.x = nm.x + (pinch.pan.x - pinch.mid.x) * (nz / pinch.zoom);
-    S.pan.y = nm.y + (pinch.pan.y - pinch.mid.y) * (nz / pinch.zoom);
+    // Same fix as the wheel handler: ptMid()'s output is relative to the
+    // canvas's top-left corner, but S.pan is relative to its centre, so both
+    // midpoints need to be re-based before anchoring against S.pan.
+    S.pan.x = (nm.x - canvas.width / 2) + (pinch.pan.x - (pinch.mid.x - canvas.width / 2)) * (nz / pinch.zoom);
+    S.pan.y = (nm.y - canvas.height / 2) + (pinch.pan.y - (pinch.mid.y - canvas.height / 2)) * (nz / pinch.zoom);
     requestRender();
   } else if (e.touches.length === 1 && painting) {
     const rect = cw.getBoundingClientRect();

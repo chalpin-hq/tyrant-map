@@ -1492,6 +1492,44 @@ function exportJSON() {
   a.download = 'tyrant_map.json'; a.click();
 }
 
+// After an import, whatever was on screen before has nothing to do with
+// where the imported content actually is — a guildmate's export is very
+// likely centred on their own territory, somewhere else on a 250x250 grid,
+// so without this it can load perfectly correctly and still look like
+// nothing happened because it rendered hundreds of pixels off-screen.
+// Frames the view on the bounding box of every Hub/Outpost/City — Dominions
+// are deliberately left out even though they're the same kind of point:
+// they're static base-map content included in basically every export
+// regardless of guild, so factoring them in just re-centres on the whole
+// map's spread every time instead of the guild's actual territory. Falls
+// back to (visible) Dominions only when there's no Hub/Outpost/City at all
+// (e.g. a design-mode terrain+Dominion-only export), and leaves the view
+// untouched if there's truly nothing to frame on.
+function frameOnImportedContent() {
+  let points = [...S.hubs, ...S.outposts, ...S.cities];
+  if (!points.length) points = visibleDominions();
+  if (!points.length) return;
+
+  const cols = points.map(p => p.col), rows = points.map(p => p.row);
+  const minCol = Math.min(...cols), maxCol = Math.max(...cols);
+  const minRow = Math.min(...rows), maxRow = Math.max(...rows);
+  const spanCol = Math.max(1, maxCol - minCol);
+  const spanRow = Math.max(1, maxRow - minRow);
+
+  // Hex-grid pixel span per column/row at zoom 1 — see hw()/hh() above.
+  const colPx1 = Math.sqrt(3) * 7, rowPx1 = 7 * 2 * 0.75;
+  const fitZoom = Math.min(
+    (canvas.width  * 0.7) / (spanCol * colPx1),
+    (canvas.height * 0.7) / (spanRow * rowPx1),
+  );
+  S.zoom = Math.max(0.4, Math.min(6, fitZoom));
+
+  S.pan = { x: 0, y: 0 };
+  const p = h2p((minCol + maxCol) / 2, (minRow + maxRow) / 2);
+  S.pan.x = canvas.width  / 2 - p.x;
+  S.pan.y = canvas.height / 2 - p.y;
+}
+
 function importJSON() {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = '.json';
@@ -1508,6 +1546,7 @@ function importJSON() {
         if (d.guilds)    S.guilds    = d.guilds;
         if (d.watchtowerSets) S.watchtowerSets = d.watchtowerSets;
         syncWatchtowerCheckboxes();
+        frameOnImportedContent();
         renderGuildPanel();
         render();
         infoEl.textContent = 'Map imported successfully.';

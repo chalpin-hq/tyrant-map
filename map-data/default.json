@@ -845,7 +845,6 @@
     "193,130": "plains",
     "192,131": "plains",
     "193,131": "plains",
-    "178,89": "mountains",
     "192,93": "mountains",
     "193,92": "mountains",
     "193,93": "mountains",
@@ -29602,7 +29601,7 @@
     "177,95": "plains",
     "178,90": "plains",
     "178,96": "plains",
-    "179,89": "plains",
+    "179,89": "mountains",
     "180,89": "plains",
     "181,89": "plains",
     "182,89": "plains",
@@ -33995,7 +33994,8 @@
     "81,167": "plains",
     "76,173": "desert",
     "164,178": "desert",
-    "194,178": "plains"
+    "194,178": "plains",
+    "178,89": "plains"
   },
   "hubs": [],
   "outposts": [],
